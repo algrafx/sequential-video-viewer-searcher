@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<link rel="shortcut icon" href="fav.png" />
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+	<meta name="description" content="Video url stepper." />
+	<title>URL stepper</title>
+	<style>
+		#canvasHolder {position: absolute;left: 0;width: 0;opacity: 0}
+		.flexDir{display: flex;flex-direction: row;font-size: 26px;color: #888;height: 75px;align-items: center}
+		.codeInput{width: 90%;height: 26px}
+		.imgtip span {visibility: hidden;position: fixed;left: 10px;top: 10px;z-index: 99}
+		.imgtip:hover span {visibility: visible}
+	</style>
+</head>
+<body onload="pageLoading()" bgcolor="#000">
+	<div style="width:800px;margin:0 auto">
+		<div align="center">
+			<video controls="" autoplay pause"no" preload="true" playsinline="" style="width:100%;margin:auto;max-height:500px" id="videoPlayer">
+				<source src="" type="video/mp4">
+			</video>
+		</div>
+		<div align="center">
+			<a class="imgtip" target="_blank" style="color: #666">preview
+				<span>
+					<img id="preview" src="" />
+				</span>
+				<br><br>
+			</a>
+			<button style="width:6%;height:100px;font-size:60px" onClick="goBackward2()"><</button>
+			<button style="width:18%;height:100px;font-size:60px" onClick="goBackward()"><<</button>
+			<input style="width:49%;height:100px;font-size:60px;background:#777" id="numberButton" type="button" value="--" onClick="goStill()" />
+			<button style="width:18%;height:100px;font-size:60px;background:#999" onClick="goForward()" />>></button>
+			<button style="width:6%;height:100px;font-size:60px;background:#999" onClick="goForward2()" />></button>
+		</div>
+		<br>
+		<div id="finalVideoLink" style="background:#888">.</div>
+		<div id="finalPreviewLink" style="background:#888">.</div>
+		<br>
+		<input id="baseURL" type="text" size="60%" />
+		<input id="numberURL" type="text" size="20%" style="background: #cdf"/>
+		<input id="tailURL" type="text" size="17%" />
+		<input id="previewURL" type="text" size="60%" />
+		<input id="separatorURL" type="text" size="20%" />
+		<input id="extraURL" type="text" size="17%" />
+		<div class="flexDir">
+			<div style="width:15%;text-align: center">
+				video:
+			</div>
+			<div style="width:15%">
+				<input class="codeInput" id="videoCode" type="text" style="background: #fb4"/>
+			</div>
+			<div style="width:15%;text-align: center">
+				preview:
+			</div>
+			<div style="width:15%">
+				<input class="codeInput" id="previewCode" type="text" style="background: #fb4"/>
+			</div>
+			<div style="width:23%;text-align: center">
+				<button style="width:98%;height: 34px" onClick="doExport()">export</button>
+			</div>
+			<div style="width:21%;text-align: center">
+				<label for="canvasHolder" style="display: flow;border: 2px dashed #888"ondrop="drop(event)" ondragover="dragover(event)">import</label>
+				<input type="file" id="canvasHolder" name="canvasHolder" ondrop="drop(event)" ondragover="dragover(event)" />
+			</div>
+		</div>
+	</div>
+	<script type="text/javascript">
+		var currentNumber = 10000;
+		var stepMode = 0;
+		document.getElementById('baseURL').value = "https://algrafx.ru/mp4/";
+		document.getElementById('numberURL').value = currentNumber.toString();
+		document.getElementById('tailURL').value = ".mp4";
+		document.getElementById('previewURL').value = "https://algrafx.ru/jpg/";
+		document.getElementById('separatorURL').value = ".jpg";
+		document.getElementById('extraURL').value = "fav.png";
+		document.getElementById('videoCode').value = "123";
+		document.getElementById('previewCode').value = "425";
+		const inputArray=['baseURL','numberURL','tailURL','previewURL','separatorURL','extraURL','videoCode','previewCode'];
+		var currentDirrection = 1;
+		document.getElementById('videoPlayer').addEventListener('error', function () { changeCurrent2(); }, true);
+		function doExport() {
+			var textToSave = document.getElementById('baseURL').value+"\n"+document.getElementById('numberURL').value+"\n";
+			var textToSave = textToSave + document.getElementById('tailURL').value+"\n"+document.getElementById('previewURL').value+"\n";
+			var textToSave = textToSave + document.getElementById('separatorURL').value+"\n"+document.getElementById('extraURL').value+"\n";
+			var textToSave = textToSave + document.getElementById('videoCode').value+"\n"+document.getElementById('previewCode').value;
+			var textToSaveAsBlob = new Blob([textToSave], { type: "text/plain" });
+			var textToSaveAsURL = window.URL.createObjectURL(textToSaveAsBlob);
+			var nameRegex = new RegExp(/(?<=:\/\/)\w*/s);
+			var fileNameToSaveAs = textToSave.match(nameRegex);
+			var downloadLink = document.createElement("a");
+			downloadLink.download = fileNameToSaveAs;
+			downloadLink.innerHTML = "Download File";
+			downloadLink.href = textToSaveAsURL;
+			downloadLink.onclick = destroyClickedElement;
+			downloadLink.style.display = "none";
+			document.body.appendChild(downloadLink);
+			downloadLink.click();
+		}
+		function destroyClickedElement(event) {
+			document.body.removeChild(event.target);
+		}
+		document.getElementById('canvasHolder').addEventListener('change',function () {
+			var fr = new FileReader();
+			fr.onload = function () {
+				ddd = fr.result.split(/\s+/);
+				for (var i = 0; i<ddd.length; i++){
+					document.getElementById(inputArray[i]).value = ddd[i].toString();
+				}
+				currentNumber = parseInt(document.getElementById('numberURL').value)-1;
+				goForward2();
+			}
+			fr.readAsText(this.files[0]);
+		})
+		function dragover(ev) {
+			ev.preventDefault();
+		}
+		function drop(ev) {
+			ev.preventDefault();
+			var fr = new FileReader();
+			fr.onload = function () {
+				//ddd = fr.result.split(/\n/);
+				ddd = fr.result.split(/\r?\n|\r|\n/g);
+				for (var i = 0; i<ddd.length; i++){
+					document.getElementById(inputArray[i]).value = ddd[i].toString();
+				}
+				currentNumber = parseInt(document.getElementById('numberURL').value)-1;
+				goForward2();
+			}
+			fr.readAsText(ev.dataTransfer.files[0]);
+		}
+		function pageLoading() {
+			document.getElementById('numberButton').value = currentNumber.toString();
+			const numberElement = document.getElementById('numberURL');
+			numberElement.addEventListener("keyup", function (event) {
+				if (event.key === "Enter") {
+					currentNumber = parseInt(numberElement.value) - 1;
+					goForward2();
+				}
+			});
+			const vCode = document.getElementById('videoCode');
+			vCode.addEventListener("keyup", function (event) {
+				if (event.key === "Enter") {
+					changeCurrent2();
+				}
+			});
+		}
+		function formPreviewURL() {
+			vCode = document.getElementById('previewCode');
+			currentPreviewURL="";
+			for (var i = 0; i<vCode.value.length; i++){
+				idString=inputArray[(vCode.value.substring(i, i+1)-1)];
+				currentPreviewURL+=document.getElementById(idString).value;
+			}
+		}
+		function formVideoURL() {
+			vCode = document.getElementById('videoCode');
+			currentVideoURL="";
+			for (var i = 0; i<vCode.value.length; i++){
+				idString=inputArray[(vCode.value.substring(i, i+1)-1)];
+				currentVideoURL+=document.getElementById(idString).value;
+			}
+		}
+		function goForward2() { currentDirrection = 1; stepMode=1; changeCurrent(); }
+		function goForward() { currentDirrection = 1; stepMode=0; changeCurrent(); }
+		function goStill() { currentDirrection = 0; stepMode=1;changeCurrent(); }
+		function goBackward() { currentDirrection = -1; stepMode=0;changeCurrent(); }
+		function goBackward2() { currentDirrection = -1; stepMode=1;changeCurrent(); }
+		function changeCurrent2() {
+			if (stepMode==0){
+				changeCurrent();
+			}
+		}
+		function changeCurrent() {
+			if (currentDirrection != 0) {
+				currentNumber += currentDirrection;
+				document.getElementById('numberButton').value = currentNumber.toString();
+				document.getElementById('numberURL').value = currentNumber.toString();
+				formVideoURL();
+				formPreviewURL();
+				videoElement = document.getElementById('videoPlayer');
+				document.getElementById('preview').src = currentPreviewURL;
+				document.getElementById('finalVideoLink').innerHTML = currentVideoURL;
+				document.getElementById('finalPreviewLink').innerHTML = currentPreviewURL;
+				videoElement.innerHTML = "<source src=\"" + currentVideoURL + "\" type=\"video/mp4\">";
+				videoElement.load();
+			}
+		}
+	</script>
+</body>
+</html>
